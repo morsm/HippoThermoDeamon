@@ -103,7 +103,13 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 blue = Node.Blue
             };
 
+            // Post the RGB
             await client.PostAsync<LampDataObject>(Url + "/rgb.json", obj, new JsonMediaTypeFormatter());
+
+            // Switch on or off (this is a separate request)
+            string onOffUrl = Url + "/";
+            if (Node.On) onOffUrl += "on.html"; else onOffUrl += "off.html";
+            await client.GetAsync(onOffUrl);
 
             // Update last seen
             Node.LastSeen = DateTime.Now;
