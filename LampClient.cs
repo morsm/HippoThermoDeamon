@@ -103,7 +103,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 blue = Node.Blue
             };
 
-            await client.PostAsync<LampDataObject>(Url + "/set.json", obj, new JsonMediaTypeFormatter());
+            await client.PostAsync<LampDataObject>(Url + "/rgb.json", obj, new JsonMediaTypeFormatter());
 
             // Update last seen
             Node.LastSeen = DateTime.Now;
