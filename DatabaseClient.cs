@@ -27,7 +27,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
             // Primary key on Name in the lamps table.
             // Really only does something the first time the table is created
-            GetTable().EnsureIndex("Name", true);
+//            GetTable().EnsureIndex("Name", true);
         }
 
         public void AddOrUpdate(LampNode node)

@@ -40,7 +40,10 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
                     foreach (var service in services)
                     {
-                        string url = "http://" + host.IPAddress + ":" + service.Port;
+                        // Workaround: if IPAddress is null, look in Id string
+                        string ip = host.IPAddress ?? host.Id.Substring(0, host.Id.IndexOf(':'));
+
+                        string url = "http://" + ip + ":" + service.Port;
                         string name = host.DisplayName.Substring(HIPPO_HOST_ID.Length);
 
                         var newClient = new LampClient(url, name);

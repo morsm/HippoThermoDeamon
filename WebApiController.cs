@@ -61,19 +61,26 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
                 // See what was set
                 bool changed = false;
-                if (data.Red > 0 && data.Red < 255)
+                if (data.Red >= 0 && data.Red <= 255)
                 {
                     record.Red = Convert.ToByte(data.Red);
                     changed = true;
                 }
-                if (data.Green > 0 && data.Green < 255)
+                if (data.Green >= 0 && data.Green <= 255)
                 {
                     record.Green = Convert.ToByte(data.Green);
                     changed = true;
                 }
-                if (data.Blue > 0 && data.Blue < 255)
+                if (data.Blue >= 0 && data.Blue <= 255)
                 {
                     record.Blue = Convert.ToByte(data.Blue);
+                    changed = true;
+                }
+
+                bool dataOn = Convert.ToBoolean(data.On);
+                if (dataOn != record.On)
+                {
+                    record.On = dataOn;
                     changed = true;
                 }
 
