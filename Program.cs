@@ -17,7 +17,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             Console.WriteLine("HippotronicsLedDaemon started");
 
             // Set up REST services in OWIN web server
-            var webapp = WebApp.Start("http://localhost:9000/", new Action<IAppBuilder>(Configuration));
+            var webapp = WebApp.Start("http://*:9000/", new Action<IAppBuilder>(Configuration));
 
             Console.CancelKeyPress += (sender, e) =>
             {
