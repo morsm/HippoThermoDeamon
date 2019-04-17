@@ -116,7 +116,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
                 // Type supported as of 3.3
                 bool supported = major > 3 || (major == 3 && minor >= 3);
-                if (!supported) throw new NotSupportedException();
+                if (!supported) throw new NotSupportedException(String.Format("Version is {0}.{1} and needs to be at least 3.3", major, minor));
 
                 // Get the type
                 var typeResponse = await client.GetAsync(Url + "/config.json");
@@ -127,10 +127,12 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 _node.NodeType = (NodeType)typeObj.type;
 
             }
-            catch
+            catch (Exception e)
             {
                 // If the node version is not implemented, it is really old and it is a RGB lamp
                 _node.NodeType = NodeType.LampColorRGB;
+
+                Console.WriteLine("Assuming {0} is an RGB lamp, because of problem: {1} message {2}", this.Name, e.GetType().Name, e.Message);
             }
         }
 

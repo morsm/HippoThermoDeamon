@@ -86,17 +86,20 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         protected static void UpdateDb(IList<LampClient> lamps = null)
         {
-            using (var client = new DatabaseClient())
+            lock (DatabaseClient.Synchronization)
             {
-
-                if (lamps != null)
+                using (var client = new DatabaseClient())
                 {
-                    // Add new clients to database
-                    foreach (var lamp in lamps) if (lamp.StateSet) client.AddOrUpdate(lamp.Node);
-                }
 
-                // Remove old records
-                client.PurgeExpired();
+                    if (lamps != null)
+                    {
+                        // Add new clients to database
+                        foreach (var lamp in lamps) if (lamp.StateSet) client.AddOrUpdate(lamp.Node);
+                    }
+
+                    // Remove old records
+                    client.PurgeExpired();
+                }
             }
         }
 

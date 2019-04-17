@@ -47,6 +47,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 currentLamp.Red = node.Red;
                 currentLamp.Green = node.Green;
                 currentLamp.Blue = node.Blue;
+                currentLamp.NodeType = node.NodeType;
 
                 table.Update(currentLamp);
             }
