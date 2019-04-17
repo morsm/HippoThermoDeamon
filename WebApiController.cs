@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Web.Http;
 
-using Owin;
 
 namespace Termors.Serivces.HippotronicsLedDaemon
 {
@@ -30,23 +29,29 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         [Route("webapi/lamps"),HttpGet]
         public LampNode[] GetLamps()
         {
-            using (var db = new DatabaseClient())
+            lock (DatabaseClient.Synchronization)
             {
-                var records = db.GetAll();
-                List<LampNode> retval = new List<LampNode>();
+                using (var db = new DatabaseClient())
+                {
+                    var records = db.GetAll();
+                    List<LampNode> retval = new List<LampNode>();
 
-                foreach (var r in records) retval.Add(r);
-                return retval.ToArray();
+                    foreach (var r in records) retval.Add(r);
+                    return retval.ToArray();
+                }
             }
         }
 
         [Route("webapi/lamp/{id}"), HttpGet]
         public LampNode GetLamp(string id)
         {
-            using (var db = new DatabaseClient())
+            lock (DatabaseClient.Synchronization)
             {
-                var record = db.GetOne(id);
-                return record;
+                using (var db = new DatabaseClient())
+                {
+                    var record = db.GetOne(id);
+                    return record;
+                }
             }
 
         }
@@ -54,47 +59,49 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         [Route("webapi/lamp/{id}"), HttpPost]
         public LampNode SetLampState(string id, SetLampData data)
         {
-            using (var db = new DatabaseClient())
+            lock (DatabaseClient.Synchronization)
             {
-                var record = db.GetOne(id);
-                if (record == null) return null;
-
-                // See what was set
-                bool changed = false;
-                if (data.Red >= 0 && data.Red <= 255)
+                using (var db = new DatabaseClient())
                 {
-                    record.Red = Convert.ToByte(data.Red);
-                    changed = true;
-                }
-                if (data.Green >= 0 && data.Green <= 255)
-                {
-                    record.Green = Convert.ToByte(data.Green);
-                    changed = true;
-                }
-                if (data.Blue >= 0 && data.Blue <= 255)
-                {
-                    record.Blue = Convert.ToByte(data.Blue);
-                    changed = true;
-                }
+                    var record = db.GetOne(id);
+                    if (record == null) return null;
 
-                bool dataOn = Convert.ToBoolean(data.On);
-                if (dataOn != record.On)
-                {
-                    record.On = dataOn;
-                    changed = true;
+                    // See what was set
+                    bool changed = false;
+                    if (data.Red >= 0 && data.Red <= 255)
+                    {
+                        record.Red = Convert.ToByte(data.Red);
+                        changed = true;
+                    }
+                    if (data.Green >= 0 && data.Green <= 255)
+                    {
+                        record.Green = Convert.ToByte(data.Green);
+                        changed = true;
+                    }
+                    if (data.Blue >= 0 && data.Blue <= 255)
+                    {
+                        record.Blue = Convert.ToByte(data.Blue);
+                        changed = true;
+                    }
+
+                    bool dataOn = Convert.ToBoolean(data.On);
+                    if (dataOn != record.On)
+                    {
+                        record.On = dataOn;
+                        changed = true;
+                    }
+
+                    if (changed)
+                    {
+                        var client = new LampClient(record);
+
+                        client.SetState().Wait();       // Synchronously set the state. It may throw an exception
+                        db.AddOrUpdate(record);         // and if not, set the last seen time to update.
+                    }
+
+                    return record;
                 }
-
-                if (changed)
-                {
-                    var client = new LampClient(record);
-
-                    client.SetState().Wait();       // Synchronously set the state. It may throw an exception
-                    db.AddOrUpdate(record);         // and if not, set the last seen time to update.
-                }
-
-                return record;
             }
-
         }
     }
 }

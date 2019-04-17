@@ -28,4 +28,18 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         public byte Green { get; set; }         // Green or 1D color
         public byte Blue{ get; set; }
     }
+
+    public class VersionDataObject
+    {
+        public string version { get; set; }
+    }
+
+    public class ConfigDataObject
+    {
+        public string name { get; set; }
+        public int behavior { get; set; }
+
+        public int type { get; set; }
+    }
+
 }

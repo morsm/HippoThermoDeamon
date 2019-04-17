@@ -14,7 +14,9 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         public static readonly string LAMPS_TABLE = "lamps";
         public static ulong DEFAULT_PURGE_TIMEOUT = 300000;     // 5 minutes
 
-        public static ulong PurgeTimeout { get; set; } 
+        public static ulong PurgeTimeout { get; set; }
+
+        public static object Synchronization { get; } = new object();
 
         public DatabaseClient()
         {
