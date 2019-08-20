@@ -113,18 +113,30 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 string[] versionMajorMinor = versionObj.version.Split('.');
                 int major = Convert.ToInt32(versionMajorMinor[0]);
                 int minor = Convert.ToInt32(versionMajorMinor[1]);
+                int revision = 0;
+                if (versionMajorMinor.Length > 2) revision = Convert.ToInt32(versionMajorMinor[2]);
 
                 // Type supported as of 3.3
                 bool supported = major > 3 || (major == 3 && minor >= 3);
                 if (!supported) throw new NotSupportedException(String.Format("Version is {0}.{1} and needs to be at least 3.3", major, minor));
 
-                // Get the type
-                var typeResponse = await client.GetAsync(Url + "/config.json");
-                // Deserialize type info
-                string typeJson = await typeResponse.Content.ReadAsStringAsync();
-                var typeObj = JsonConvert.DeserializeObject<ConfigDataObject>(typeJson);
+                // WORKAROUND: bug in 3.5.0 that was only used for relay types
+                // This did not give the type back correctly
+                if (major == 3 && minor == 5 && revision == 0)
+                {
+                    _node.NodeType = NodeType.Switch;
+                }
+                else
+                {
 
-                _node.NodeType = (NodeType)typeObj.type;
+                    // Get the type
+                    var typeResponse = await client.GetAsync(Url + "/config.json");
+                    // Deserialize type info
+                    string typeJson = await typeResponse.Content.ReadAsStringAsync();
+                    var typeObj = JsonConvert.DeserializeObject<ConfigDataObject>(typeJson);
+
+                    _node.NodeType = (NodeType)typeObj.type;
+                }
 
             }
             catch (Exception e)
