@@ -23,7 +23,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         [Route("webapi/refresh"), HttpGet]
         public void Refresh()
         {
-            Daemon.Refresh().Wait();
+            // No real function anymore
         }
 
         [Route("webapi/lamps"),HttpGet]

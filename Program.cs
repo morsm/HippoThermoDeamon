@@ -2,16 +2,27 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 using System.Web.Http;
 using System.Net.Http.Formatting;
 
 using Microsoft.Owin.Hosting;
 using Owin;
 
+using Termors.Nuget.MDNSServiceDirectory;
+
+
 namespace Termors.Serivces.HippotronicsLedDaemon
 {
     class Daemon
     {
+        public static readonly string HIPPO_HOST_ID = "HippoLed-";
+        public static readonly string HIPPO_SVC_ID = "._hippohttp";
+
+        private static ServiceDirectory _serviceDirectory = new ServiceDirectory();
+        private static ManualResetEvent _endEvent = new ManualResetEvent(false);
+
+
         public static void Main(string[] args)
         {
             Console.WriteLine("HippotronicsLedDaemon started");
@@ -25,14 +36,87 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 webapp.Dispose();
             };
 
-            // Main program loop, until break signal received,
-            // is to refresh the list of clients every minute
-            while (true)
-            {
-                Refresh().Wait();
+            // Set up ServiceDirectory to look for MDNS lamps on the network
+            _serviceDirectory.FilterFunction = (arg) => { return arg.ToLowerInvariant().Contains(HIPPO_SVC_ID); };
+            _serviceDirectory.KeepaliveCheckInterval = 10;
+            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = true;
 
-                Thread.Sleep(60000);
+            _serviceDirectory.HostDiscovered += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
+            _serviceDirectory.HostUpdated += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
+            _serviceDirectory.HostRemoved += HostRemoved;
+
+            _serviceDirectory.Init();
+
+            Console.WriteLine("HippotronicsLedDaemon running");
+
+            // Schedule purge of records that have not been updated
+            Task.Run(() => PurgeOldRecords());
+
+            // Run until Ctrl+C
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                _endEvent.Set();
+            };
+
+            _endEvent.WaitOne();
+
+        }
+
+        private static void PurgeOldRecords()
+        {
+            lock (DatabaseClient.Synchronization)
+            {
+                using (var client = new DatabaseClient())
+                {
+                    // Remove old records
+                    client.PurgeExpired();
+                }
             }
+
+            bool quit = _endEvent.WaitOne(60000);
+            if (! quit) Task.Run(() => PurgeOldRecords());
+        }
+
+        private static void HostRemoved(ServiceDirectory directory, ServiceEntry entry)
+        {
+            Console.WriteLine("Lamp removed from the network: {0}", entry);
+
+            lock (DatabaseClient.Synchronization)
+            {
+                using (var client = new DatabaseClient())
+                {
+                    client.RemoveByName(ServiceEntryToName(entry));
+                }
+            }
+        }
+
+        private static async Task HostDiscoveredOrUpdated(ServiceDirectory directory, ServiceEntry entry)
+        {
+            LampClient newClient = new LampClient(ServiceEntryToUrl(entry), ServiceEntryToName(entry));
+
+            Console.WriteLine("New lamp discovered or updated on the network: {0}", newClient);
+
+            await GetLampStatus(newClient);
+            UpdateDb(newClient);
+        }
+
+        private static string ServiceEntryToName(ServiceEntry entry)
+        {
+            int idxTrailer = entry.Service.IndexOf(HIPPO_SVC_ID);
+            int lenHeader = HIPPO_HOST_ID.Length;
+            string name = entry.Service.Substring(lenHeader, idxTrailer - lenHeader);
+
+            return name;
+        }
+
+        private static string ServiceEntryToUrl(ServiceEntry entry)
+        {
+            StringBuilder sb = new StringBuilder("http://");
+
+            if (entry.IPAddresses.Count > 0) sb.Append(entry.IPAddresses[0]); else sb.Append(entry.Host);
+            sb.Append(":").Append(entry.Port);
+
+            return sb.ToString();
         }
 
         // This code configures Web API using Owin
@@ -58,73 +142,31 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             appBuilder.UseWebApi(config);
         }
 
-        /// <summary>
-        /// Refresh the Zeroconf clients in the database
-        /// </summary>
-        public static async Task Refresh()
-        {
-            // Get new lamp clients from ZeroConf
-            var lampClients = await GetZeroConf();
-
-            // Get the status of the lamp nodes
-            await GetLampStatuses(lampClients);
-
-            // Update the database of current lamps
-            UpdateDb(lampClients);
-        }
-
-        protected static async Task<IList<LampClient>> GetZeroConf()
-        {
-            var client = new ZeroconfClient();
-            var responses = await client.GetLampClients();
-
-            Console.WriteLine("Refresh cycle executed, {0} services found:", responses.Count);
-            foreach (var resp in responses) Console.WriteLine(resp);
-
-            return responses;
-        }
-
-        protected static void UpdateDb(IList<LampClient> lamps = null)
+        protected static void UpdateDb(LampClient lamp)
         {
             lock (DatabaseClient.Synchronization)
             {
                 using (var client = new DatabaseClient())
                 {
 
-                    if (lamps != null)
-                    {
-                        // Add new clients to database
-                        foreach (var lamp in lamps) if (lamp.StateSet) client.AddOrUpdate(lamp.Node);
-                    }
-
-                    // Remove old records
-                    client.PurgeExpired();
+                    // Add new client to database
+                    if (lamp.StateSet) client.AddOrUpdate(lamp.Node);
                 }
             }
         }
 
-        protected static async Task GetLampStatuses(IList<LampClient> lamps = null)
+        protected static async Task GetLampStatus(LampClient lamp)
         {
-            Task[] requests = new Task[lamps.Count];
-
-            for (int i = 0; i < lamps.Count; i++) 
-            {
-                // Assume the lamp is online and get its state
-                lamps[i].Online = true;
-                requests[i] = lamps[i].GetState();
-            }
+            // Assume the lamp is online and get its state
+            lamp.Online = true;
 
             try
             {
-                await Task.WhenAll(requests);
+                await lamp.GetState();
             }
             catch (Exception)
             {
-                // One or more lamps gave an exception. They must be offline.
-                for (int i = 0; i < requests.Length; i++)
-                {
-                    if (requests[i].IsFaulted) lamps[i].Online = false;
-                }
+                lamp.Online = false;
             }
         }
     }

@@ -81,6 +81,11 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             table.Delete(x => x.LastSeen.AddMilliseconds(PurgeTimeout) < now);
         }
 
+        public void RemoveByName(string id)
+        {
+            GetTable().Delete(x => x.Name.ToLower() == id.ToLower());
+        }
+
         public void Dispose()
         {
             _db.Dispose();
