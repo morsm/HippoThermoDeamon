@@ -7,29 +7,34 @@ using LiteDB;
 
 namespace Termors.Serivces.HippotronicsLedDaemon
 {
+    internal sealed class DatabaseSingleton
+    {
+        protected DatabaseSingleton()
+        {
+        }
+
+        static DatabaseSingleton()
+        {
+            // Open database
+            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "hippoled.db");
+            Database = new LiteDatabase(dbPath);
+        }
+
+        internal static LiteDatabase Database
+        {
+            get;
+        }
+    }
+
     public class DatabaseClient : IDisposable
     {
-        protected readonly LiteDatabase _db;
-
         public static readonly string LAMPS_TABLE = "lamps";
         public static ulong DEFAULT_PURGE_TIMEOUT = 300000;     // 5 minutes
 
-        public static ulong PurgeTimeout { get; set; }
+        public static ulong PurgeTimeout { get; set; } = DEFAULT_PURGE_TIMEOUT;
 
         public static object Synchronization { get; } = new object();
 
-        public DatabaseClient()
-        {
-            // Set default timeout
-            PurgeTimeout = DEFAULT_PURGE_TIMEOUT;
-
-            // Open database
-            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "hippoled.db");
-            _db = new LiteDatabase(dbPath);
-
-            // Primary key on Name in the lamps table.
-            // Really only does something the first time the table is created
-        }
 
         public void AddOrUpdate(LampNode node)
         {
@@ -88,12 +93,13 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         public void Dispose()
         {
-            _db.Dispose();
+            // TODO: perhaps remove
+            //_db.Dispose();
         }
 
         private LiteCollection<LampNode> GetTable()
         {
-            return _db.GetCollection<LampNode>(LAMPS_TABLE);
+            return DatabaseSingleton.Database.GetCollection<LampNode>(LAMPS_TABLE);
         }
 
     }

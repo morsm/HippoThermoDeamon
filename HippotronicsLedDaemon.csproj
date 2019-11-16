@@ -8,6 +8,7 @@
     <RootNamespace>Termors.Serivces.HippotronicsLedDaemon</RootNamespace>
     <AssemblyName>HippotronicsLedDaemon</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <ReleaseVersion>1.1</ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -106,6 +107,9 @@
     <Reference Include="System.Memory">
       <HintPath>packages\System.Memory.4.5.3\lib\netstandard2.0\System.Memory.dll</HintPath>
     </Reference>
+    <Reference Include="ColorMinePortable">
+      <HintPath>packages\ColorMinePortable.2.0.1\lib\netstandard2.0\ColorMinePortable.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -114,6 +118,8 @@
     <Compile Include="LampClient.cs" />
     <Compile Include="DatabaseClient.cs" />
     <Compile Include="WebApiController.cs" />
+    <Compile Include="RequestSequencer.cs" />
+    <Compile Include="SetLampData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

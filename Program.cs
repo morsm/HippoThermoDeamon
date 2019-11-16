@@ -50,7 +50,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             Console.WriteLine("HippotronicsLedDaemon running");
 
             // Schedule purge of records that have not been updated
-            Task.Run(() => PurgeOldRecords());
+            Task.Run(() => UpdateLampDatabase());
 
             // Run until Ctrl+C
             Console.CancelKeyPress += (sender, e) =>
@@ -62,25 +62,52 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         }
 
-        private static void PurgeOldRecords()
+        private static void UpdateLampDatabase()
         {
             lock (DatabaseClient.Synchronization)
             {
                 using (var client = new DatabaseClient())
                 {
+                    // Update the status for all the lamps that are still in there
+                    var lamps = client.GetAll();
+                    foreach (var lamp in lamps)
+                    {
+                        UpdateSingleLamp(client, lamp);
+                    }
+
                     // Remove old records
                     client.PurgeExpired();
                 }
             }
 
             bool quit = _endEvent.WaitOne(60000);
-            if (! quit) Task.Run(() => PurgeOldRecords());
+            if (! quit) Task.Run(() => UpdateLampDatabase());
+        }
+
+        private static void UpdateSingleLamp(DatabaseClient db, LampNode lamp)
+        {
+            var lampClient = new LampClient(lamp);
+
+            try
+            {
+                lampClient.GetState().Wait();
+
+                lock (DatabaseClient.Synchronization)
+                {
+                    using (var client = new DatabaseClient())
+                    {
+                        client.AddOrUpdate(lampClient.Node);
+                    }
+                }
+            }
+            catch
+            {
+                // Error is ok; if the lamp is not seen, it will be removed
+            }
         }
 
         private static void HostRemoved(ServiceDirectory directory, ServiceEntry entry)
         {
-            Console.WriteLine("Lamp removed from the network: {0}", entry);
-
             lock (DatabaseClient.Synchronization)
             {
                 using (var client = new DatabaseClient())
@@ -93,8 +120,6 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         private static async Task HostDiscoveredOrUpdated(ServiceDirectory directory, ServiceEntry entry)
         {
             LampClient newClient = new LampClient(ServiceEntryToUrl(entry), ServiceEntryToName(entry));
-
-            Console.WriteLine("New lamp discovered or updated on the network: {0}", newClient);
 
             await GetLampStatus(newClient);
             UpdateDb(newClient);

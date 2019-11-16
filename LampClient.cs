@@ -139,12 +139,10 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                 }
 
             }
-            catch (Exception e)
+            catch
             {
                 // If the node version is not implemented, it is really old and it is a RGB lamp
                 _node.NodeType = NodeType.LampColorRGB;
-
-                Console.WriteLine("Assuming {0} is an RGB lamp, because of problem: {1} message {2}", this.Name, e.GetType().Name, e.Message);
             }
         }
 
@@ -160,7 +158,11 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             };
 
             // Post the RGB
-            await client.PostAsync<LampDataObject>(Url + "/rgb.json", obj, new JsonMediaTypeFormatter());
+            var url = Url + "/rgb.json";
+            var json = JsonConvert.SerializeObject(obj);
+            var content = new StringContent(json);
+            content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+            var result = await client.PostAsync(url, content);
 
             // Switch on or off (this is a separate request)
             string onOffUrl = Url + "/";
