@@ -9,7 +9,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 {
     internal sealed class DatabaseSingleton
     {
-        protected DatabaseSingleton()
+        private DatabaseSingleton()
         {
         }
 

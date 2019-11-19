@@ -95,7 +95,7 @@
       <HintPath>packages\Makaretu.Dns.Multicast.0.27.0\lib\net461\Makaretu.Dns.Multicast.dll</HintPath>
     </Reference>
     <Reference Include="MDNS-ServiceDirectory-Lib">
-      <HintPath>packages\MDNS-ServiceDirectory.0.1.1\lib\net472\MDNS-ServiceDirectory-Lib.dll</HintPath>
+      <HintPath>packages\MDNS-ServiceDirectory.0.2.0\lib\net472\MDNS-ServiceDirectory-Lib.dll</HintPath>
     </Reference>
     <Reference Include="System.Buffers">
       <HintPath>packages\System.Buffers.4.5.0\lib\netstandard2.0\System.Buffers.dll</HintPath>
