@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
 using System.Web.Http;
 
 
@@ -7,6 +9,17 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 {
     public class WebApiController : ApiController
     {
+
+        [Route("webapi/html"), HttpGet]
+        public HttpResponseMessage GetWebPage()
+        {
+            var result = WebPageGenerator.GenerateWebPage(GetLamps());
+
+            var res = Request.CreateResponse(HttpStatusCode.OK);
+            res.Content = new StringContent(result.ToString(), System.Text.Encoding.UTF8, "text/html");
+
+            return res;
+        }
 
         [Route("webapi/refresh"), HttpGet]
         public void Refresh()

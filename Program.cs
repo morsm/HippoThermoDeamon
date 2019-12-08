@@ -38,8 +38,9 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
             // Set up ServiceDirectory to look for MDNS lamps on the network
             _serviceDirectory.FilterFunction = (arg) => { return arg.ToLowerInvariant().Contains(HIPPO_SVC_ID); };
-            _serviceDirectory.KeepaliveCheckInterval = 10;
-            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = true;
+
+            // HACK: disable keepalive checking because it sometimes loses hosts and can't find them again
+            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = false;
 
             _serviceDirectory.HostDiscovered += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
             _serviceDirectory.HostUpdated += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
@@ -76,7 +77,8 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                     }
 
                     // Remove old records
-                    client.PurgeExpired();
+                    // HACK: disable keepalive checking because it sometimes loses hosts and can't find them again
+                    //client.PurgeExpired();
                 }
             }
 
