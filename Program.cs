@@ -19,7 +19,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         public static readonly string HIPPO_HOST_ID = "HippoLed-";
         public static readonly string HIPPO_SVC_ID = "._hippohttp";
 
-        private static ServiceDirectory _serviceDirectory = new ServiceDirectory();
+        private static ServiceDirectory _serviceDirectory = new ServiceDirectory(filterfunc: FilterHippoServices);
         private static ManualResetEvent _endEvent = new ManualResetEvent(false);
 
 
@@ -37,10 +37,8 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             };
 
             // Set up ServiceDirectory to look for MDNS lamps on the network
-            _serviceDirectory.FilterFunction = (arg) => { return arg.ToLowerInvariant().Contains(HIPPO_SVC_ID); };
-
-            // HACK: disable keepalive checking because it sometimes loses hosts and can't find them again
-            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = false;
+            _serviceDirectory.KeepaliveCheckInterval = 60;
+            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = true;
 
             _serviceDirectory.HostDiscovered += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
             _serviceDirectory.HostUpdated += (dir, entry) => { HostDiscoveredOrUpdated(dir, entry).Wait(); };
@@ -63,6 +61,11 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         }
 
+        private static bool FilterHippoServices(string arg)
+        {
+            return arg.ToLowerInvariant().Contains("hippohttp");
+        }
+
         private static void UpdateLampDatabase()
         {
             lock (DatabaseClient.Synchronization)
@@ -77,8 +80,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
                     }
 
                     // Remove old records
-                    // HACK: disable keepalive checking because it sometimes loses hosts and can't find them again
-                    //client.PurgeExpired();
+                    client.PurgeExpired();
                 }
             }
 
