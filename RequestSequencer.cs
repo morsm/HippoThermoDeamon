@@ -27,6 +27,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
     {
         protected Queue<LampRequest> _queue = new Queue<LampRequest>();
         protected Mutex _mutex = new Mutex(false);
+        protected DatabaseClient _db = new DatabaseClient();
 
         public static RequestSequencer Sequencer = new RequestSequencer();
 
@@ -77,7 +78,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             catch (Exception ex)
             {
                 // Error processing request
-                Console.Error.WriteLine("Error processing request {0}, Exception {1} Message {2}", request, ex.GetType().Name, ex.Message);
+                Logger.LogError("Error processing request {0}, Exception {1} Message {2}", request, ex.GetType().Name, ex.Message);
             }
             finally
             {
@@ -88,32 +89,26 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         protected virtual void Serve(LampRequest request)
         {
-            lock (DatabaseClient.Synchronization)
-            {
-                using (var db = new DatabaseClient())
-                {
-                    var record = GetLampDb(db, request.Id);
-                    var client = new LampClient(record);
+            var record = GetLampDb(request.Id);
+            var client = new LampClient(record);
 
-                    record.ProcessStateChanges(request.Data);
+            record.ProcessStateChanges(request.Data);
 
-                    client.SetState().Wait();       // Synchronously set the state. It may throw an exception
+            client.SetState().Wait();       // Synchronously set the state. It may throw an exception
 
-                    UpdateLampDb(db, record);
-                }
-            }
+            UpdateLampDb(record);
             
         }
 
-        protected LampNode GetLampDb(DatabaseClient db, String id)
+        protected LampNode GetLampDb(String id)
         {
-            var record = db.GetOne(id);
+            var record = _db.GetOne(id);
             return record;
         }
 
-        protected void UpdateLampDb(DatabaseClient db, LampNode record)
+        protected void UpdateLampDb(LampNode record)
         {
-            db.AddOrUpdate(record);             // Update the record to the database
+            _db.AddOrUpdate(record);             // Update the record to the database
         }
 
     }

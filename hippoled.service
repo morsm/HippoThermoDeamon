@@ -1,0 +1,14 @@
+[Unit]
+Description=Hippotronics LED light daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/daemonize -a -c /usr/local/bin/hippoledd -e /var/log/user/hippoledd.log -o /var/log/user/hippoledd.log -p /var/log/user/hippoledd.pid -u pi /usr/bin/mono ./HippotronicsLedDaemon.exe
+Type=forking
+#PIDFile=/var/log/user/hippoledd.pid
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

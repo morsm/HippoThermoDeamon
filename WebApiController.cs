@@ -9,6 +9,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 {
     public class WebApiController : ApiController
     {
+        private DatabaseClient _db = new DatabaseClient();
 
         [Route("webapi/html"), HttpGet]
         public HttpResponseMessage GetWebPage()
@@ -30,31 +31,18 @@ namespace Termors.Serivces.HippotronicsLedDaemon
         [Route("webapi/lamps"), HttpGet]
         public LampNode[] GetLamps()
         {
-            lock (DatabaseClient.Synchronization)
-            {
-                using (var db = new DatabaseClient())
-                {
-                    var records = db.GetAll();
-                    List<LampNode> retval = new List<LampNode>();
+            var records = _db.GetAll();
+            List<LampNode> retval = new List<LampNode>();
 
-                    foreach (var r in records) retval.Add(r);
-                    return retval.ToArray();
-                }
-            }
+            foreach (var r in records) retval.Add(r);
+            return retval.ToArray();
         }
 
         [Route("webapi/lamp/{id}"), HttpGet]
         public LampNode GetLamp(string id)
         {
-            lock (DatabaseClient.Synchronization)
-            {
-                using (var db = new DatabaseClient())
-                {
-                    var record = db.GetOne(id);
-                    return record;
-                }
-            }
-
+            var record = _db.GetOne(id);
+            return record;
         }
 
         [Route("webapi/lamp/{id}"), HttpPost]

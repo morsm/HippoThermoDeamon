@@ -58,6 +58,8 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         public bool StateSet { get; protected set; }
 
+        public TimeSpan ClientTimeout { get; set; } = TimeSpan.FromSeconds(5.0);
+
         public LampNode Node
         {
             get
@@ -76,7 +78,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             // Is the lamp type known yet?
             if (_node.NodeType == NodeType.Unknown) await GetNodeType();
 
-            var client = new HttpClient();
+            var client = new HttpClient() { Timeout = ClientTimeout };
             var response = await client.GetAsync(Url + "/status.json");
             response.EnsureSuccessStatusCode();     // Throw if HTTP error
 
@@ -100,7 +102,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             try
             {
                 // Get the node version
-                var client = new HttpClient();
+                var client = new HttpClient() { Timeout = ClientTimeout };
                 var versionResponse = await client.GetAsync(Url + "/version.json");
 
                 // If the node version is not implemented, it is really old and it is a RGB lamp
@@ -148,7 +150,7 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         public async Task SetState()
         {
-            var client = new HttpClient();
+            var client = new HttpClient() { Timeout = ClientTimeout };
             var obj = new LampDataObject
             {
                 burn = Node.On,

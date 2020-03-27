@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 
 using LiteDB;
@@ -15,89 +16,106 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         static DatabaseSingleton()
         {
+            // Database name depends on version of this assembly
+            string assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            int lastPoint = assemblyVersion.LastIndexOf('.');
+            assemblyVersion = assemblyVersion.Substring(0, lastPoint);
+
             // Open database
-            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "hippoled.db");
+            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "hippoled" + assemblyVersion + ".db");
             Database = new LiteDatabase(dbPath);
+
+            var collection = Database.GetCollection<LampNode>(DatabaseClient.LAMPS_TABLE);
+            collection.EnsureIndex(x => x.Name);
         }
 
         internal static LiteDatabase Database
         {
             get;
         }
+
+        internal static object SyncRoot { get; } = new object();
     }
 
-    public class DatabaseClient : IDisposable
+    public class DatabaseClient
     {
         public static readonly string LAMPS_TABLE = "lamps";
-        public static ulong DEFAULT_PURGE_TIMEOUT = 300000;     // 5 minutes
+        public static ulong DEFAULT_PURGE_TIMEOUT = 5;     // 5 minutes
 
         public static ulong PurgeTimeout { get; set; } = DEFAULT_PURGE_TIMEOUT;
 
-        public static object Synchronization { get; } = new object();
-
-
         public void AddOrUpdate(LampNode node)
         {
-            var table = GetTable();
-
-            // Name exists?
-            var currentLamp = table.FindOne(rec => rec.Name.Equals(node.Name));
-            if (currentLamp != null)
+            lock (DatabaseSingleton.SyncRoot)
             {
-                // Update
-                currentLamp.Url = node.Url;
-                currentLamp.On = node.On;
-                currentLamp.Online = node.Online;
-                currentLamp.LastSeen = node.LastSeen;
-                currentLamp.Red = node.Red;
-                currentLamp.Green = node.Green;
-                currentLamp.Blue = node.Blue;
-                currentLamp.NodeType = node.NodeType;
+                var table = GetTable();
 
-                table.Update(currentLamp);
-            }
-            else
-            {
-                // Add
-                table.Insert(node);
+                // Name exists?
+                var currentLamp = table.FindOne(rec => rec.Name.ToLower() == node.Name.ToLower());
+                if (currentLamp != null)
+                {
+                    // Update
+                    currentLamp.Url = node.Url;
+                    currentLamp.On = node.On;
+                    currentLamp.Online = node.Online;
+                    currentLamp.LastSeen = node.LastSeen;
+                    currentLamp.Red = node.Red;
+                    currentLamp.Green = node.Green;
+                    currentLamp.Blue = node.Blue;
+                    currentLamp.NodeType = node.NodeType;
+
+                    table.Update(currentLamp);
+                }
+                else
+                {
+                    // Add
+                    table.Insert(node);
+                }
             }
         }
 
         public IEnumerable<LampNode> GetAll()
         {
-            var table = GetTable();
+            lock (DatabaseSingleton.SyncRoot)
+            {
+                var table = GetTable();
+                var list = new List<LampNode>(table.FindAll());
 
-            return table.FindAll();
+                return list;
+            }
         }
 
         public LampNode GetOne(string id)
         {
-            var table = GetTable();
-            var record = table.FindOne(x => x.Name.ToLower() == id.ToLower());
+            lock (DatabaseSingleton.SyncRoot)
+            {
+                var table = GetTable();
+                var record = table.FindOne(x => x.Name.ToLower() == id.ToLower());
 
-            return record;
+                return record;
+            }
         }
 
         public void PurgeExpired()
         {
-            var table = GetTable();
-            var now = DateTime.Now;
+            lock (DatabaseSingleton.SyncRoot)
+            {
+                var table = GetTable();
+                var oldest = DateTime.Now.Subtract(TimeSpan.FromMinutes(PurgeTimeout));
 
-            table.Delete(x => x.LastSeen.AddMilliseconds(PurgeTimeout) < now);
+                table.DeleteMany(x => x.LastSeen < oldest);
+            }
         }
 
         public void RemoveByName(string id)
         {
-            GetTable().Delete(x => x.Name.ToLower() == id.ToLower());
+            lock (DatabaseSingleton.SyncRoot)
+            {
+                GetTable().DeleteMany(x => x.Name.ToLower() == id.ToLower());
+            }
         }
 
-        public void Dispose()
-        {
-            // TODO: perhaps remove
-            //_db.Dispose();
-        }
-
-        private LiteCollection<LampNode> GetTable()
+        private ILiteCollection<LampNode> GetTable()
         {
             return DatabaseSingleton.Database.GetCollection<LampNode>(LAMPS_TABLE);
         }
