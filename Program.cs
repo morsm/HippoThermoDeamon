@@ -9,20 +9,12 @@ using System.Net.Http.Formatting;
 using Microsoft.Owin.Hosting;
 using Owin;
 
-using Termors.Nuget.MDNSServiceDirectory;
 
-
-namespace Termors.Serivces.HippotronicsLedDaemon
+namespace Termors.Serivces.HippotronicsThermoDaemon
 {
     class Daemon
     {
-        public static readonly string HIPPO_HOST_ID = "HippoLed-";
-        public static readonly string HIPPO_SVC_ID = "._hippohttp";
-
-        private ServiceDirectory _serviceDirectory = new ServiceDirectory(filterfunc: FilterHippoServices);
         private ManualResetEvent _endEvent = new ManualResetEvent(false);
-        private DatabaseClient _client = new DatabaseClient();
-
 
         public static async Task Main(string[] args)
         {
@@ -31,28 +23,18 @@ namespace Termors.Serivces.HippotronicsLedDaemon
 
         public async Task Run(string[] args)
         { 
-            Logger.Log("HippotronicsLedDaemon started");
+            Logger.Log("HippotronicsThermoDaemon started");
 
             // Set up REST services in OWIN web server
-            var webapp = WebApp.Start("http://*:9000/", new Action<IAppBuilder>(Configuration));
+            var webapp = WebApp.Start("http://*:9002/", new Action<IAppBuilder>(Configuration));
 
             Console.CancelKeyPress += (sender, e) =>
             {
-                Logger.Log("HippotronicsLedDaemon stopped");
+                Logger.Log("HippotronicsThermoDaemon stopped");
                 webapp.Dispose();
             };
 
-            // Set up ServiceDirectory to look for MDNS lamps on the network
-            _serviceDirectory.KeepaliveCheckInterval = 60;
-            _serviceDirectory.KeepalivePing = _serviceDirectory.KeepaliveTcp = true;
-
-            _serviceDirectory.HostDiscovered += async (dir, entry) => { await HostDiscovered(dir, entry); };
-            _serviceDirectory.HostUpdated += async (dir, entry) => { await HostUpdated(dir, entry); };
-            _serviceDirectory.HostRemoved += HostRemoved;
-
-            _serviceDirectory.Init();
-
-            Logger.Log("HippotronicsLedDaemon running");
+            Logger.Log("HippotronicsThermoDaemon running");
 
             // Schedule purge of records that have not been updated
             await ScheduleNextUpdate();
@@ -70,24 +52,20 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             // Wait for normal termination
             _endEvent.WaitOne();
 
-            Logger.Log("HippotronicsLedDaemon ending");
+            Logger.Log("HippotronicsThermoDaemon ending");
             Environment.Exit(0);        // Normal exit
         }
 
-        private static bool FilterHippoServices(string arg)
-        {
-            return arg.ToLowerInvariant().Contains("hippohttp");
-        }
 
         private async Task ScheduleNextUpdate()
         {
-            await Task.Run(async () => await UpdateLampDatabase());
+            await Task.Run(async () => await UpdateTemperature());
         }
 
-        private async Task UpdateLampDatabase()
+        private async Task UpdateTemperature()
         {
-            // Wait one minute before updating the database
-            bool quit = _endEvent.WaitOne(60000);
+            // Wait one minute before updating the temperature
+            bool quit = _endEvent.WaitOne(5000);
             if (quit) return;
 
             // Trigger Watchdog so it doesn't kick us out.
@@ -95,23 +73,23 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             // after five minutes, so that systemd (or similar)
             // can restart it
             Watchdog.Dog.Wake();
-            Logger.Log("Updating lamp database");
 
-            // Update the status for all the lamps that are still in there
-            var lamps = _client.GetAll();
-            foreach (var lamp in lamps)
+            var daemon = ThermostatDaemon.Instance;
+
+            // Get current temperature
+            daemon.ReadRoomTemperatureCelsius();
+
+            // Determine if we need to switch the heating on or off
+            var switched = daemon.DetermineHeatingOn();
+
+            if (switched)
             {
-                await UpdateSingleLamp(_client, lamp);
+                var state = daemon.InternalState;
+
+                Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature );
             }
 
-            // Remove old records
-            _client.PurgeExpired();
-
-            // Log current lamp count
-            int lampCount = 0;
-            var entries = _client.GetAll().GetEnumerator();
-            while (entries.MoveNext()) ++lampCount;
-            Logger.Log("Lamp database updated, {0} entries", lampCount);
+            // TODO: Log to database?
 
             if (!quit)
             {
@@ -119,67 +97,6 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             }
         }
 
-        private async Task UpdateSingleLamp(DatabaseClient db, LampNode lamp)
-        {
-            var lampClient = new LampClient(lamp);
-
-            try
-            {
-                await lampClient.GetState();
-
-                _client.AddOrUpdate(lampClient.Node);
-            }
-            catch
-            {
-                // Error is ok; if the lamp is not seen, it will be removed
-            }
-        }
-
-        private void HostRemoved(ServiceDirectory directory, ServiceEntry entry)
-        {
-            _client.RemoveByName(ServiceEntryToName(entry));
-            Logger.Log("Host removed: {0}", entry.ToShortString());
-        }
-
-        private async Task HostDiscovered(ServiceDirectory directory, ServiceEntry entry)
-        {
-            Logger.Log("Host discovered: {0}", entry.ToShortString());
-
-            await HostDiscoveredOrUpdated(directory, entry);
-        }
-
-        private async Task HostUpdated(ServiceDirectory directory, ServiceEntry entry)
-        {
-            await HostDiscoveredOrUpdated(directory, entry);
-        }
-
-
-        private async Task HostDiscoveredOrUpdated(ServiceDirectory directory, ServiceEntry entry)
-        {
-            LampClient newClient = new LampClient(ServiceEntryToUrl(entry), ServiceEntryToName(entry));
-
-            await GetLampStatus(newClient);
-            UpdateDb(newClient);
-        }
-
-        private static string ServiceEntryToName(ServiceEntry entry)
-        {
-            int idxTrailer = entry.Service.IndexOf(HIPPO_SVC_ID);
-            int lenHeader = HIPPO_HOST_ID.Length;
-            string name = entry.Service.Substring(lenHeader, idxTrailer - lenHeader);
-
-            return name;
-        }
-
-        private static string ServiceEntryToUrl(ServiceEntry entry)
-        {
-            StringBuilder sb = new StringBuilder("http://");
-
-            if (entry.IPAddresses.Count > 0) sb.Append(entry.IPAddresses[0]); else sb.Append(entry.Host);
-            sb.Append(":").Append(entry.Port);
-
-            return sb.ToString();
-        }
 
         // This code configures Web API using Owin
         public void Configuration(IAppBuilder appBuilder)
@@ -204,25 +121,5 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             appBuilder.UseWebApi(config);
         }
 
-        protected void UpdateDb(LampClient lamp)
-        {
-            // Add new client to database
-            if (lamp.StateSet) _client.AddOrUpdate(lamp.Node);
-        }
-
-        protected async Task GetLampStatus(LampClient lamp)
-        {
-            // Assume the lamp is online and get its state
-            lamp.Online = true;
-
-            try
-            {
-                await lamp.GetState();
-            }
-            catch (Exception)
-            {
-                lamp.Online = false;
-            }
-        }
     }
 }

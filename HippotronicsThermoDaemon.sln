@@ -1,7 +1,7 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HippotronicsLedDaemon", "HippotronicsLedDaemon.csproj", "{84C5CDFE-5260-4A1E-B3DD-13409ECF7A76}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HippotronicsThermoDaemon", "HippotronicsThermoDaemon.csproj", "{84C5CDFE-5260-4A1E-B3DD-13409ECF7A76}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -5,16 +5,14 @@ using System.Net.Http;
 using System.Web.Http;
 
 
-namespace Termors.Serivces.HippotronicsLedDaemon
+namespace Termors.Serivces.HippotronicsThermoDaemon
 {
     public class WebApiController : ApiController
     {
-        private DatabaseClient _db = new DatabaseClient();
-
         [Route("webapi/html"), HttpGet]
         public HttpResponseMessage GetWebPage()
         {
-            var result = WebPageGenerator.GenerateWebPage(GetLamps());
+            var result = WebPageGenerator.GenerateWebPage();
 
             var res = Request.CreateResponse(HttpStatusCode.OK);
             res.Content = new StringContent(result.ToString(), System.Text.Encoding.UTF8, "text/html");
@@ -22,46 +20,38 @@ namespace Termors.Serivces.HippotronicsLedDaemon
             return res;
         }
 
-        [Route("webapi/refresh"), HttpGet]
-        public void Refresh()
+
+        [Route("webapi/roomtemp"), HttpGet]
+        public Temperature GetRoomTemperature()
         {
-            // No real function anymore
+            Temperature temp = new Temperature();
+
+            temp.CelsiusValue = ThermostatDaemon.Instance.ReadRoomTemperatureCelsius();
+
+            return temp;
         }
 
-        [Route("webapi/lamps"), HttpGet]
-        public LampNode[] GetLamps()
+        [Route("webapi/targettemp"), HttpGet]
+        public Temperature GetTargetTemperature()
         {
-            var records = _db.GetAll();
-            List<LampNode> retval = new List<LampNode>();
-
-            foreach (var r in records) retval.Add(r);
-            return retval.ToArray();
+            return GetThermostatState().TargetTemperature;
         }
 
-        [Route("webapi/lamp/{id}"), HttpGet]
-        public LampNode GetLamp(string id)
+        [Route("webapi/state"), HttpGet]
+        public ThermostatState GetThermostatState()
         {
-            var record = _db.GetOne(id);
-            return record;
+            return ThermostatDaemon.Instance.InternalState;
         }
 
-        [Route("webapi/lamp/{id}"), HttpPost]
-        public LampNode SetLampState(string id, SetLampData data)
+        [Route("webapi/targettemp"), HttpPost]
+        public ThermostatState SetTargetTemp(Temperature temp)
         {
-            return SetLampStateExtended(id, new SetLampDataExtended(data));
+            // Set temp
+            ThermostatDaemon.Instance.SetTargetTemperature(temp);
+
+            // Return total thermostat state
+            return GetThermostatState();
         }
 
-        [Route("webapi/lampstate/{id}"), HttpPost]
-        public LampNode SetLampStateExtended(string id, SetLampDataExtended data)
-        {
-            LampNode record = null;
-
-            record = GetLamp(id);
-            record.ProcessStateChanges(data);
-
-            RequestSequencer.Sequencer.Schedule(new LampRequest(id, data));
-
-            return record;
-        }
     }
 }
