@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using System.Threading.Tasks;
 
 
 namespace Termors.Serivces.HippotronicsThermoDaemon
@@ -22,11 +23,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
 
         [Route("webapi/roomtemp"), HttpGet]
-        public Temperature GetRoomTemperature()
+        public async Task<Temperature> GetRoomTemperature()
         {
             Temperature temp = new Temperature();
 
-            temp.CelsiusValue = ThermostatDaemon.Instance.ReadRoomTemperatureCelsius();
+            temp.CelsiusValue = await ThermostatDaemon.Instance.ReadRoomTemperatureCelsius();
 
             return temp;
         }

@@ -106,6 +106,7 @@
     <Compile Include="Temperature.cs" />
     <Compile Include="ThermostatState.cs" />
     <Compile Include="ThermostatDaemon.cs" />
+    <Compile Include="SerialClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

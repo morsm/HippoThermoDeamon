@@ -77,7 +77,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             var daemon = ThermostatDaemon.Instance;
 
             // Get current temperature
-            daemon.ReadRoomTemperatureCelsius();
+            await daemon.ReadRoomTemperatureCelsius();
 
             // Determine if we need to switch the heating on or off
             var switched = daemon.DetermineHeatingOn();

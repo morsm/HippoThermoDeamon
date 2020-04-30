@@ -1,17 +1,24 @@
 ﻿using System;
+using System.Threading.Tasks;
+
 
 namespace Termors.Serivces.HippotronicsThermoDaemon
 {
     public sealed class ThermostatDaemon
     {
         public static double THRESHOLD_CELSIUS = 0.2;
+        public static int RELAY_INDEX = 0;
 
         protected ThermostatDaemon()
         {
-            ReadHeatingOnFromDevice();
-            ReadRoomTemperatureCelsius();
+            Task.Run(async () =>
+            {
+                await ReadHeatingOnFromDevice();
+                await ReadRoomTemperatureCelsius();
 
-            _state.TargetTemperature = _state.RoomTemperature;      // TODO: perhaps better to store target temp somewhere and read it in case of crash
+                _state.TargetTemperature = _state.RoomTemperature;      // TODO: perhaps better to store target temp somewhere and read it in case of crash
+
+            });
         }
 
         public static ThermostatDaemon Instance = new ThermostatDaemon();
@@ -33,10 +40,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             }
         }
 
-        public double ReadRoomTemperatureCelsius()
+        public async Task<double> ReadRoomTemperatureCelsius()
         {
-            // TODO: get room temperature from serial daemon
-            double temp = 20.0 + new Random().NextDouble();
+            var client = new SerialClient();
+
+            double temp = (await client.GetTemperature()).TempCelsius;
 
             lock (_state)
             {
@@ -46,10 +54,13 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             return temp;
         }
 
-        public bool ReadHeatingOnFromDevice()
+        public async Task<bool> ReadHeatingOnFromDevice()
         {
-            // TODO: get relay status from serial daemon
-            var onOff = false;
+            var client = new SerialClient();
+
+            int[] states = await client.GetRelayStatus();
+
+            var onOff = states[RELAY_INDEX] == 1;
 
             lock (_state)
             {
@@ -80,23 +91,28 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 if (_state.RoomTemperature.CelsiusValue < _state.TargetTemperature.CelsiusValue - THRESHOLD_CELSIUS)
                 {
                     // Switch heating on if it's off, getting too cold
-                    if (! currentlyOn) SwitchHeating(true);
+                    if (! currentlyOn) Task.Run(async() => await SwitchHeating(true));
                 }
                 else if (_state.RoomTemperature.CelsiusValue > _state.TargetTemperature.CelsiusValue + THRESHOLD_CELSIUS)
                 {
                     // Switch heating off if it's on, getting too hot
-                    if (currentlyOn) SwitchHeating(false);
+                    if (currentlyOn) Task.Run(async () => await SwitchHeating(false));
                 }
 
                 return _state.HeatingOn != currentlyOn;
             }
         }
 
-        private void SwitchHeating(bool onOff)
+        private async Task SwitchHeating(bool onOff)
         {
-            // TODO: switch heating on or off using daemon
+            var client = new SerialClient();
 
-            _state.HeatingOn = onOff;
+            await client.SetRelay(RELAY_INDEX, onOff);
+
+            lock (_state)
+            {
+                _state.HeatingOn = onOff;
+            }
         }
     }
 }
