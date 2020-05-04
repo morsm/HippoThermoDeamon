@@ -28,6 +28,9 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             // Set up REST services in OWIN web server
             var webapp = WebApp.Start("http://*:9002/", new Action<IAppBuilder>(Configuration));
 
+            // Start the Thermostat Daemon. This will throw if there is a problem and the app will exit
+            await ThermostatDaemon.Initialize();
+
             Console.CancelKeyPress += (sender, e) =>
             {
                 Logger.Log("HippotronicsThermoDaemon stopped");
@@ -68,33 +71,38 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             bool quit = _endEvent.WaitOne(5000);
             if (quit) return;
 
-            // Trigger Watchdog so it doesn't kick us out.
-            // If this loop hangs, the watchdog will exit the process
-            // after five minutes, so that systemd (or similar)
-            // can restart it
-            Watchdog.Dog.Wake();
-
-            var daemon = ThermostatDaemon.Instance;
-
-            // Get current temperature
-            await daemon.ReadRoomTemperatureCelsius();
-
-            // Determine if we need to switch the heating on or off
-            var switched = daemon.DetermineHeatingOn();
-
-            if (switched)
+            try
             {
-                var state = daemon.InternalState;
+                var daemon = ThermostatDaemon.Instance;
 
-                Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature );
-            }
+                // Get current temperature
+                await daemon.ReadRoomTemperatureCelsius();
 
-            // TODO: Log to database?
+                // Determine if we need to switch the heating on or off
+                var switched = daemon.DetermineHeatingOn();
 
-            if (!quit)
-            {
+                // Trigger Watchdog so it doesn't kick us out.
+                // If this loop hangs, the watchdog will exit the process
+                // after five minutes, so that systemd (or similar)
+                // can restart it
+                Watchdog.Dog.Wake();
+
+                if (switched)
+                {
+                    var state = daemon.InternalState;
+
+                    Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature);
+                }
+
                 await ScheduleNextUpdate();
+
             }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error in temperature update loop: {0}, {1}. Daemon quitting.", ex.GetType().Name, ex.Message);
+                _endEvent.Set();
+            }
+
         }
 
 

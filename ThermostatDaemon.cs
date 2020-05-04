@@ -4,6 +4,11 @@ using System.Threading.Tasks;
 
 namespace Termors.Serivces.HippotronicsThermoDaemon
 {
+
+    public class NotInitializedException : Exception
+    {
+    }
+
     public sealed class ThermostatDaemon
     {
         public static double THRESHOLD_CELSIUS = 0.2;
@@ -11,17 +16,37 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         protected ThermostatDaemon()
         {
-            Task.Run(async () =>
-            {
-                await ReadHeatingOnFromDevice();
-                await ReadRoomTemperatureCelsius();
-
-                _state.TargetTemperature = _state.RoomTemperature;      // TODO: perhaps better to store target temp somewhere and read it in case of crash
-
-            });
         }
 
-        public static ThermostatDaemon Instance = new ThermostatDaemon();
+        private static ThermostatDaemon _instance = null;
+        public static ThermostatDaemon Instance
+        {
+            get
+            {
+                if (_instance == null) throw new NotInitializedException();
+                return _instance;
+            }
+
+            private set
+            {
+                _instance = value;
+            }
+        }
+
+        internal async static Task Initialize()
+        {
+            Instance = new ThermostatDaemon();
+
+            await Instance.InitializeInstance();
+        }
+
+        internal async Task InitializeInstance()
+        {
+            await ReadHeatingOnFromDevice();
+            await ReadRoomTemperatureCelsius();
+
+            _state.TargetTemperature = _state.RoomTemperature;      // TODO: perhaps better to store target temp somewhere and read it in case of crash
+        }
 
         private ThermostatState _state = new ThermostatState();
         public ThermostatState InternalState

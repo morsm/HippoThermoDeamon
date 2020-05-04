@@ -77,5 +77,48 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         {
             return String.Format("{0:0.0} {1}", Temp, Scale == TemperatureScale.CELSIUS ? '\u2103' : '\u2109');
         }
+
+        public void Add(Temperature tDelta)
+        {
+            if (tDelta.Scale == this.Scale)
+            {
+                Temp += tDelta.Temp;
+            }
+            else
+            {
+                if (tDelta.Scale == TemperatureScale.CELSIUS)
+                {
+                    // Have to convert to Fahrenheit
+                    Temp += C2F(tDelta.Temp);
+                }
+                else
+                {
+                    // Have to convert to Celsius
+                    Temp += F2C(tDelta.Temp);
+                }
+            }
+        }
+
+        public void Subtract(Temperature tDelta)
+        {
+            Temperature tInverse = tDelta;
+            tInverse.Temp *= -1.0;
+
+            Add(tInverse);
+        }
+
+        public static Temperature operator+(Temperature t1, Temperature t2)
+        {
+            Temperature t3 = t1;
+            t3.Add(t2);
+            return t3;
+        }
+
+        public static Temperature operator -(Temperature t1, Temperature t2)
+        {
+            Temperature t3 = t1;
+            t3.Subtract(t2);
+            return t3;
+        }
     }
 }

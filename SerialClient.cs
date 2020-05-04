@@ -39,7 +39,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         public async Task<int[]> GetRelayStatus()
         {
-            var json = await GetRequest("relaystate");
+            var json = await GetRequest("relaystatus");
             return JsonConvert.DeserializeObject<int[]>(json);
         }
 

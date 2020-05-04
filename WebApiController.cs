@@ -54,5 +54,15 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             return GetThermostatState();
         }
 
+        [Route("webapi/tempdelta"), HttpPost]
+        public ThermostatState SetTempDelta(Temperature tempDelta)
+        {
+            // Set temp
+            ThermostatDaemon.Instance.SetTargetTemperature(ThermostatDaemon.Instance.InternalState.TargetTemperature + tempDelta);
+
+            // Return total thermostat state
+            return GetThermostatState();
+        }
+
     }
 }
