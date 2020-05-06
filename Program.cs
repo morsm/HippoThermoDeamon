@@ -15,6 +15,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
     class Daemon
     {
         private ManualResetEvent _endEvent = new ManualResetEvent(false);
+        private DateTime _lastDbWrite = new DateTime(1977, 7, 6);           // Date in the past, make sure to update DB first time
 
         public static async Task Main(string[] args)
         {
@@ -94,7 +95,26 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                     Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature);
                 }
 
+                if (DateTime.Now.Subtract(_lastDbWrite).TotalSeconds >= 300)
+                {
+                    // Send update to database every five minutes.
+                    // Doesn't matter if this fails, it's optional
+                    try
+                    {
+                        DatabaseClient client = new DatabaseClient { Url = "http://192.168.1.8:3005/" };        // TODO: make configurable
+
+                        await client.PushState(daemon.InternalState);
+
+                        _lastDbWrite = DateTime.Now;
+                    }
+                    catch (Exception exOptional)
+                    {
+                        Logger.LogError("Couldn't push state to database, but continuing. Exception {0}: {1}", exOptional.GetType().Name, exOptional.Message);
+                    }
+                }
+
                 await ScheduleNextUpdate();
+
 
             }
             catch (Exception ex)

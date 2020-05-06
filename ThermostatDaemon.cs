@@ -58,7 +58,8 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 {
                     HeatingOn = _state.HeatingOn,
                     RoomTemperature = _state.RoomTemperature,
-                    TargetTemperature = _state.TargetTemperature
+                    TargetTemperature = _state.TargetTemperature,
+                    RelativeHumidity = _state.RelativeHumidity
                 };
 
                 return copy;
@@ -69,11 +70,14 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         {
             var client = new SerialClient();
 
-            double temp = (await client.GetTemperature()).TempCelsius;
+            var result = await client.GetTemperature();
+            double temp = result.TempCelsius;
+            double hum = result.RelHumidity;
 
             lock (_state)
             {
                 _state.RoomTemperature.CelsiusValue = temp;
+                _state.RelativeHumidity = hum;
             }
 
             return temp;
