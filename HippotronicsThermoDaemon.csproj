@@ -108,6 +108,7 @@
     <Compile Include="ThermostatDaemon.cs" />
     <Compile Include="SerialClient.cs" />
     <Compile Include="DatabaseClient.cs" />
+    <Compile Include="TargetTempStore.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

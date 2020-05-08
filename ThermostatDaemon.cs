@@ -1,5 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json;
 
 
 namespace Termors.Serivces.HippotronicsThermoDaemon
@@ -45,7 +48,10 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             await ReadHeatingOnFromDevice();
             await ReadRoomTemperatureCelsius();
 
-            _state.TargetTemperature = _state.RoomTemperature;      // TODO: perhaps better to store target temp somewhere and read it in case of crash
+            _state.TargetTemperature = ReadStoredTargetTemperature();
+            Logger.Log("Taking initial target temperature of {0}", _state.TargetTemperature);
+
+            DetermineHeatingOn();
         }
 
         private ThermostatState _state = new ThermostatState();
@@ -106,6 +112,8 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 _state.TargetTemperature = temperature;
             }
 
+            StoreTargetTemperature();
+
             DetermineHeatingOn();
         }
 
@@ -141,6 +149,55 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             lock (_state)
             {
                 _state.HeatingOn = onOff;
+            }
+        }
+
+        // Functions to read and write stored temperature
+        private string TargetTempStorePath
+        {
+            get
+            {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "stored_target_temp.json");
+            }
+        }
+
+
+        private Temperature ReadStoredTargetTemperature()
+        {
+            var temp = _state.RoomTemperature;
+
+            try
+            {
+                using (StreamReader rea = new StreamReader(TargetTempStorePath))
+                {
+                    string json = rea.ReadToEnd();
+                    var stored = JsonConvert.DeserializeObject<TargetTempStore>(json);
+
+                    // If the data is younger than 24 hours, accept it
+                    // Otherwise, just take current room temperature instead and maintain that
+                    var age = DateTime.Now - stored.Timestamp;
+                    if (age.TotalHours < 24)
+                        temp = stored.Target;
+                    else
+                        Logger.Log("Stored target temperature too old ({0} minutes)", age.TotalMinutes);
+                }
+
+            }
+            catch
+            {
+                Logger.Log("Can't read stored target temperature, taking room temperature as target instead.");
+            }
+
+            return temp;
+        }
+
+        private void StoreTargetTemperature()
+        {
+            TargetTempStore storeObj = new TargetTempStore { Target = _state.TargetTemperature, Timestamp = DateTime.Now };
+
+            using (StreamWriter wri = new StreamWriter(TargetTempStorePath))
+            {
+                wri.Write(JsonConvert.SerializeObject(storeObj));
             }
         }
     }
