@@ -109,9 +109,13 @@
     <Compile Include="SerialClient.cs" />
     <Compile Include="DatabaseClient.cs" />
     <Compile Include="TargetTempStore.cs" />
+    <Compile Include="Configuration.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

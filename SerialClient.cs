@@ -15,7 +15,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
     {
         protected string _baseUrl = "";
 
-        public SerialClient(string url = "http://localhost:9003/webapi/")
+        public SerialClient(string url)
         {
             _baseUrl = url;
         }

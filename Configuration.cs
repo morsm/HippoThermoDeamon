@@ -1,0 +1,10 @@
+﻿using System;
+namespace Termors.Serivces.HippotronicsThermoDaemon
+{
+    public class Configuration
+    {
+        public ushort Port { get; set; }
+        public string SerialService { get; set; }
+        public string DbService { get; set; }
+    }
+}

@@ -16,9 +16,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
     {
         public static double THRESHOLD_CELSIUS = 0.2;
         public static int RELAY_INDEX = 0;
+        public static string SerialUrl { get; set; }
 
-        protected ThermostatDaemon()
+        protected ThermostatDaemon(string serialUrl)
         {
+            SerialUrl = serialUrl;
         }
 
         private static ThermostatDaemon _instance = null;
@@ -36,9 +38,9 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             }
         }
 
-        internal async static Task Initialize()
+        internal async static Task Initialize(string url = "http://localhost:9003/webapi/")
         {
-            Instance = new ThermostatDaemon();
+            Instance = new ThermostatDaemon(url);
 
             await Instance.InitializeInstance();
         }
@@ -74,7 +76,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         public async Task<double> ReadRoomTemperatureCelsius()
         {
-            var client = new SerialClient();
+            var client = new SerialClient(SerialUrl);
 
             var result = await client.GetTemperature();
             double temp = result.TempCelsius;
@@ -91,7 +93,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         public async Task<bool> ReadHeatingOnFromDevice()
         {
-            var client = new SerialClient();
+            var client = new SerialClient(SerialUrl);
 
             int[] states = await client.GetRelayStatus();
 
@@ -142,7 +144,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         private async Task SwitchHeating(bool onOff)
         {
-            var client = new SerialClient();
+            var client = new SerialClient(SerialUrl);
 
             await client.SetRelay(RELAY_INDEX, onOff);
 

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
 using System.Web.Http;
 using System.Net.Http.Formatting;
 
+using Newtonsoft.Json;
 using Microsoft.Owin.Hosting;
 using Owin;
 
@@ -19,18 +21,23 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         public static async Task Main(string[] args)
         {
+            Config = ReadConfig();
+
             await new Daemon().Run(args);
         }
+
+        public static Configuration Config { get; private set; }
 
         public async Task Run(string[] args)
         { 
             Logger.Log("HippotronicsThermoDaemon started");
 
             // Set up REST services in OWIN web server
-            var webapp = WebApp.Start("http://*:9002/", new Action<IAppBuilder>(Configuration));
+            var url = String.Format("http://*:{0}/", Config.Port);
+            var webapp = WebApp.Start(url, new Action<IAppBuilder>(Configuration));
 
             // Start the Thermostat Daemon. This will throw if there is a problem and the app will exit
-            await ThermostatDaemon.Initialize();
+            await ThermostatDaemon.Initialize(Config.SerialService);
 
             Console.CancelKeyPress += (sender, e) =>
             {
@@ -60,6 +67,14 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             Environment.Exit(0);        // Normal exit
         }
 
+        private static Configuration ReadConfig()
+        {
+            using (StreamReader rea = new StreamReader("config.json"))
+            {
+                string json = rea.ReadToEnd();
+                return JsonConvert.DeserializeObject<Configuration>(json);
+            }
+        }
 
         private async Task ScheduleNextUpdate()
         {
@@ -101,7 +116,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                     // Doesn't matter if this fails, it's optional
                     try
                     {
-                        DatabaseClient client = new DatabaseClient { Url = "http://192.168.1.8:3005/" };        // TODO: make configurable
+                        DatabaseClient client = new DatabaseClient { Url = Config.DbService };
 
                         await client.PushState(daemon.InternalState);
 
