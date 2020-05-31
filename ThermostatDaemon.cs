@@ -193,7 +193,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             return temp;
         }
 
-        private void StoreTargetTemperature()
+        public void StoreTargetTemperature()
         {
             TargetTempStore storeObj = new TargetTempStore { Target = _state.TargetTemperature, Timestamp = DateTime.Now };
 

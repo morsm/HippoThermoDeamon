@@ -114,11 +114,15 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 {
                     // Send update to database every five minutes.
                     // Doesn't matter if this fails, it's optional
+                    //
+                    // Also, store the target temperature to disk in case of daemon crash.
                     try
                     {
                         DatabaseClient client = new DatabaseClient { Url = Config.DbService };
 
                         await client.PushState(daemon.InternalState);
+
+                        daemon.StoreTargetTemperature();
 
                         _lastDbWrite = DateTime.Now;
                     }

@@ -48,7 +48,7 @@
       <HintPath>packages\Common.Logging.Core.3.4.1\lib\net40\Common.Logging.Core.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.IPNetwork">
-      <HintPath>packages\IPNetwork2.2.5.202\lib\net47\System.Net.IPNetwork.dll</HintPath>
+      <HintPath>packages\IPNetwork2.2.5.206\lib\net47\System.Net.IPNetwork.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http.Formatting">
       <HintPath>packages\Microsoft.AspNet.WebApi.Client.5.2.7\lib\net45\System.Net.Http.Formatting.dll</HintPath>
