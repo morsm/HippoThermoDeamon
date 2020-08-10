@@ -6,5 +6,6 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         public ushort Port { get; set; }
         public string SerialService { get; set; }
         public string DbService { get; set; }
+        public double DefaultTemperature { get; set; }
     }
 }

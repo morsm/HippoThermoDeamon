@@ -166,7 +166,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         private Temperature ReadStoredTargetTemperature()
         {
-            var temp = _state.RoomTemperature;
+            var temp = new Temperature() { CelsiusValue = Daemon.Config.DefaultTemperature };
 
             try
             {
@@ -187,7 +187,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             }
             catch
             {
-                Logger.Log("Can't read stored target temperature, taking room temperature as target instead.");
+                Logger.Log("Can't read stored target temperature, taking default as target instead.");
             }
 
             return temp;

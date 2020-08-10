@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
@@ -29,8 +30,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         public static Configuration Config { get; private set; }
 
         public async Task Run(string[] args)
-        { 
-            Logger.Log("HippotronicsThermoDaemon started");
+        {
+            string assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            int lastPoint = assemblyVersion.LastIndexOf('.');
+            assemblyVersion = assemblyVersion.Substring(0, lastPoint);
+            Logger.Log("HippotronicsThermoDaemon version {0} started", assemblyVersion);
 
             // Set up REST services in OWIN web server
             var url = String.Format("http://*:{0}/", Config.Port);
