@@ -114,7 +114,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                     Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature);
                 }
 
-                if (DateTime.Now.Subtract(_lastDbWrite).TotalSeconds >= 300)
+                if (Config.EnableDb && DateTime.Now.Subtract(_lastDbWrite).TotalSeconds >= 300)
                 {
                     // Send update to database every five minutes.
                     // Doesn't matter if this fails, it's optional
