@@ -40,6 +40,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         internal async static Task Initialize(string url = "http://localhost:9003/webapi/")
         {
+            Logger.Log("Initializing to serial service at {0}", url);
             Instance = new ThermostatDaemon(url);
 
             await Instance.InitializeInstance();
