@@ -2,7 +2,7 @@
   "Port": 9002,
   "EnableDb" :  false,
   "DbService": "http://localhost:3005/",
-  "SerialService": "http://192.168.1.12:9003/webapi/",
+  "SerialService": "http://arduinoseriald:9003/webapi/",
   "DefaultTemperature": 17.0,
   "UseMedian": true,
   "MedianSamples": 5,
