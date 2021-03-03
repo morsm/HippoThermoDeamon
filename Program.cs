@@ -43,6 +43,9 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             // Start the Thermostat Daemon. This will throw if there is a problem and the app will exit
             await ThermostatDaemon.Initialize(Config.SerialService);
 
+            // See if we need to use some averaging
+            ThermostatDaemon.Instance.SetMedianBehavior(Config.UseMedian, Config.MedianSamples);
+
             Console.CancelKeyPress += (sender, e) =>
             {
                 Logger.Log("HippotronicsThermoDaemon stopped");
@@ -87,8 +90,8 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         private async Task UpdateTemperature()
         {
-            // Wait one minute before updating the temperature
-            bool quit = _endEvent.WaitOne(5000);
+            // Wait some seconds before updating the temperature
+            bool quit = _endEvent.WaitOne((int) Config.Pollingloop * 1000);
             if (quit) return;
 
             try
@@ -111,7 +114,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 {
                     var state = daemon.InternalState;
 
-                    Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperature, state.TargetTemperature);
+                    Logger.Log("Heating switched {0}, room temperature {1}, target temperature {2}", state.HeatingOn ? "On" : "Off", state.RoomTemperatureQueue, state.TargetTemperature);
                 }
 
                 if (Config.EnableDb && DateTime.Now.Subtract(_lastDbWrite).TotalSeconds >= 300)

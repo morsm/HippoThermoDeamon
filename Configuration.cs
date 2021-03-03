@@ -8,5 +8,8 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         public string DbService { get; set; }
         public double DefaultTemperature { get; set; }
         public bool EnableDb { get; set; }
+        public bool UseMedian { get; set; }
+        public uint MedianSamples { get; set; }
+        public uint Pollingloop { get; set; }
     }
 }

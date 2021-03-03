@@ -57,6 +57,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             DetermineHeatingOn();
         }
 
+        public void SetMedianBehavior(bool on, uint count)
+        {
+            InternalState.RoomTemperatureQueue = on ? new MedianTempStore(count) : new MedianTempStore(1);
+        }
+
         private ThermostatState _state = new ThermostatState();
         public ThermostatState InternalState
         {
@@ -66,10 +71,12 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 var copy = new ThermostatState
                 {
                     HeatingOn = _state.HeatingOn,
-                    RoomTemperature = _state.RoomTemperature,
                     TargetTemperature = _state.TargetTemperature,
                     RelativeHumidity = _state.RelativeHumidity
                 };
+
+                var roomTemps = _state.RoomTemperatureQueue.ToArray();
+                if (roomTemps.Length > 0) copy.RoomTemperatureQueue.Add(roomTemps[0]);
 
                 return copy;
             }
@@ -85,7 +92,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
             lock (_state)
             {
-                _state.RoomTemperature.CelsiusValue = temp;
+                _state.RoomTemperatureQueue.Add(new Temperature() { CelsiusValue = temp });
                 _state.RelativeHumidity = hum;
             }
 
@@ -128,15 +135,25 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                 var currentlyOn = _state.HeatingOn;
 
                 // Temperature below target?
-                if (_state.RoomTemperature.CelsiusValue < _state.TargetTemperature.CelsiusValue - THRESHOLD_CELSIUS)
+                if (_state.RoomTemperatureQueue.Median.CelsiusValue < _state.TargetTemperature.CelsiusValue - THRESHOLD_CELSIUS)
                 {
                     // Switch heating on if it's off, getting too cold
-                    if (! currentlyOn) Task.Run(async() => await SwitchHeating(true));
+                    if (!currentlyOn)
+                    {
+                        Logger.Log("Switching heating on, median temp is {0} compared to target {1}, temperature values: {2}", _state.RoomTemperatureQueue.Median, _state.TargetTemperature, _state.RoomTemperatureQueue);
+
+                        Task.Run(async () => await SwitchHeating(true));
+                    }
                 }
-                else if (_state.RoomTemperature.CelsiusValue > _state.TargetTemperature.CelsiusValue + THRESHOLD_CELSIUS)
+                else if (_state.RoomTemperatureQueue.Median.CelsiusValue > _state.TargetTemperature.CelsiusValue + THRESHOLD_CELSIUS)
                 {
                     // Switch heating off if it's on, getting too hot
-                    if (currentlyOn) Task.Run(async () => await SwitchHeating(false));
+                    if (currentlyOn)
+                    {
+                        Logger.Log("Switching heating off, median temp is {0} compared to target {1}, temperature values: {2}", _state.RoomTemperatureQueue.Median, _state.TargetTemperature, _state.RoomTemperatureQueue);
+
+                        Task.Run(async () => await SwitchHeating(false));
+                    }
                 }
 
                 return _state.HeatingOn != currentlyOn;

@@ -10,7 +10,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         FAHRENHEIT
     }
 
-    public struct Temperature
+    public struct Temperature : IComparable<Temperature>
     {
         [JsonProperty(propertyName:"value")]
         public double Temp { get; set; } 
@@ -105,6 +105,11 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             tInverse.Temp *= -1.0;
 
             Add(tInverse);
+        }
+
+        public int CompareTo(Temperature other)
+        {
+            return CelsiusValue.CompareTo(other.CelsiusValue);
         }
 
         public static Temperature operator+(Temperature t1, Temperature t2)

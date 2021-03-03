@@ -32,7 +32,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
             var message = new DatabaseMessage
             {
-                RoomTemperature = state.RoomTemperature.CelsiusValue,
+                RoomTemperature = state.RoomTemperatureQueue.Median.CelsiusValue,
                 TargetTemperature = state.TargetTemperature.CelsiusValue,
                 RelativeHumidity = state.RelativeHumidity,
                 HeatingOn = state.HeatingOn

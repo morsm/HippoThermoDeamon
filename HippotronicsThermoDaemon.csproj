@@ -110,6 +110,7 @@
     <Compile Include="DatabaseClient.cs" />
     <Compile Include="TargetTempStore.cs" />
     <Compile Include="Configuration.cs" />
+    <Compile Include="MedianTempStore.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
