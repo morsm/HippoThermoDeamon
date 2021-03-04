@@ -16,7 +16,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         {
             get
             {
-                return RoomTemperatureQueue.Median;
+                return RoomTemperatureQueue.Average;
             }
         }
 

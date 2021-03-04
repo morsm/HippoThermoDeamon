@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -75,8 +76,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
                     RelativeHumidity = _state.RelativeHumidity
                 };
 
-                var roomTemps = _state.RoomTemperatureQueue.ToArray();
-                if (roomTemps.Length > 0) copy.RoomTemperatureQueue.Add(roomTemps[0]);
+                copy.RoomTemperatureQueue.Add(_state.RoomTemperatureQueue.Average);
 
                 return copy;
             }
@@ -90,11 +90,15 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
             double temp = result.TempCelsius;
             double hum = result.RelHumidity;
 
+            Debug.WriteLine("Temp before: average={0}, median={1} ; read value {2}", _state.RoomTemperatureQueue.Average.CelsiusValue, _state.RoomTemperatureQueue.Median.CelsiusValue, temp);
+
             lock (_state)
             {
-                _state.RoomTemperatureQueue.Add(new Temperature() { CelsiusValue = temp });
+                _state.RoomTemperatureQueue.Add(new Temperature() { CelsiusValue = temp }, Daemon.Config.Smoothing);
                 _state.RelativeHumidity = hum;
             }
+
+            Debug.WriteLine("Temp after: average={0}, median={1}", _state.RoomTemperatureQueue.Average.CelsiusValue, _state.RoomTemperatureQueue.Median.CelsiusValue);
 
             return temp;
         }

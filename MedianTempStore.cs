@@ -20,11 +20,19 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
 
         public uint Count { get; protected set; }
 
-        public void Add(Temperature t)
+        public void Add(Temperature t, bool smoothing = false)
         {
             lock (_temperatures)
             {
                 while (_temperatures.Count >= Count) _temperatures.Dequeue();
+
+                // Smoothing lets the new value be added be averaged with the existing values
+                if (smoothing && _temperatures.Count > 0)
+                {
+                    t.CelsiusValue += _temperatures.Count * Average.CelsiusValue;
+                    t.CelsiusValue /= _temperatures.Count + 1;
+                }
+
                 _temperatures.Enqueue(t);
             }
         }

@@ -10,6 +10,7 @@ namespace Termors.Serivces.HippotronicsThermoDaemon
         public bool EnableDb { get; set; }
         public bool UseMedian { get; set; }
         public uint MedianSamples { get; set; }
+        public bool Smoothing { get; set; }
         public uint Pollingloop { get; set; }
     }
 }
